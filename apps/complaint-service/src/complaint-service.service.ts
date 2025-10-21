@@ -19,10 +19,16 @@ export class ComplaintServiceService {
     return await this.complaintRepository.save(complaint);
   }
 
-  async findAll(): Promise<Complaint[]> {
-    return await this.complaintRepository.find({
-      order: { createdAt: 'DESC' },
-    });
+  async findAll(status?: ComplaintStatus): Promise<Complaint[]> {
+    const queryBuilder = this.complaintRepository
+      .createQueryBuilder('complaint')
+      .orderBy('complaint.createdAt', 'DESC');
+
+    if (status) {
+      queryBuilder.andWhere('complaint.status = :status', { status });
+    }
+
+    return await queryBuilder.getMany();
   }
 
   async findOne(id: number): Promise<Complaint> {

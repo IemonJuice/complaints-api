@@ -11,6 +11,7 @@ import {
   HttpStatus,
   HttpException,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout } from 'rxjs';
@@ -196,11 +197,11 @@ export class ApiGatewayController {
   }
 
   @Get('complaints')
-  async getAllComplaints() {
+  async getAllComplaints(@Query('status') status?: string) {
     try {
       const result = await firstValueFrom(
         this.complaintClient
-          .send({ cmd: 'get_complaints' }, {})
+          .send({ cmd: 'get_complaints' }, { status })
           .pipe(timeout(5000)),
       );
       return result;

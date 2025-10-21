@@ -3,6 +3,7 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { ComplaintServiceService } from './complaint-service.service';
 import { CreateComplaintDto, UpdateComplaintDto } from './complaint.dto';
+import { ComplaintStatus } from './entities/complaint.entity';
 
 @Controller()
 export class ComplaintServiceController {
@@ -14,8 +15,8 @@ export class ComplaintServiceController {
   }
 
   @MessagePattern({ cmd: 'get_complaints' })
-  async findAll() {
-    return await this.complaintService.findAll();
+  async findAll(@Payload() data: { status?: string }) {
+    return await this.complaintService.findAll(data.status as ComplaintStatus);
   }
 
   @MessagePattern({ cmd: 'get_complaint_by_id' })
