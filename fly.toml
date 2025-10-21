@@ -1,4 +1,4 @@
-app = "my-nest-app"
+app = "complaints-api"
 primary_region = "fra"
 
 [build]
@@ -7,8 +7,6 @@ builder = "paketobuildpacks/builder:base"
 [http_service]
 internal_port = 3000
 force_https = true
-
-[[vm]]
-cpu_kind = "shared"
-cpus = 1
-memory_mb = 256
+auto_stop_machines = true
+auto_start_machines = true
+min_machines_running = 0
