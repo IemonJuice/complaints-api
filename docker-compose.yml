@@ -1,4 +1,7 @@
+version: "3.9"
+
 services:
+  # RabbitMQ
   rabbitmq:
     image: rabbitmq:3-management
     ports:
@@ -19,6 +22,7 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # MariaDB
   mariadb:
     image: mariadb:10.11
     ports:
@@ -39,6 +43,7 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # phpMyAdmin
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:5.2
     ports:
@@ -53,6 +58,70 @@ services:
       - mariadb
     networks:
       - app-network
+    restart: unless-stopped
+
+  # Gateway
+  gateway:
+    build:
+      context: ./apps/gateway
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./apps/gateway/.env
+    networks:
+      - app-network
+    depends_on:
+      - rabbitmq
+      - mariadb
+    restart: unless-stopped
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./apps/auth-service
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./apps/auth-service/.env
+    networks:
+      - app-network
+    depends_on:
+      - rabbitmq
+      - mariadb
+    restart: unless-stopped
+
+  # Complaint Service
+  complaint-service:
+    build:
+      context: ./apps/complaint-service
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+    env_file:
+      - ./apps/complaint-service/.env
+    networks:
+      - app-network
+    depends_on:
+      - rabbitmq
+      - mariadb
+    restart: unless-stopped
+
+  # User Service
+  user-service:
+    build:
+      context: ./apps/user-service
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3003"
+    env_file:
+      - ./apps/user-service/.env
+    networks:
+      - app-network
+    depends_on:
+      - rabbitmq
+      - mariadb
     restart: unless-stopped
 
 volumes:
