@@ -10,7 +10,7 @@
     "start:prod:gateway": "node dist/apps/gateway/main.js",
     "start:prod:auth-service": "node dist/apps/auth-service/main.js",
     "start:prod:user-service": "node dist/apps/user-service/main.js",
-    "start:prod:complaint-service": "node dist/apps/complaint-service/main.js"
+    "start:prod:complaint-service": "node dist/apps/complaint-service/main.js",
     "build:auth-service": "nest build auth-service",
     "build:complaint-service": "nest build complaint-service",
     "build:user-service": "nest build user-service",
