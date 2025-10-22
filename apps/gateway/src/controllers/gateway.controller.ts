@@ -12,6 +12,7 @@ import {
   HttpException,
   UseGuards,
   Query,
+  Logger,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout } from 'rxjs';
@@ -36,192 +37,133 @@ import {
 
 @Controller('api')
 export class ApiGatewayController {
+  private readonly logger = new Logger(ApiGatewayController.name);
+
   constructor(
-    @Inject(AUTH_SERVICE_RABITTMQ)
-    private readonly authClient: ClientProxy,
+    @Inject(AUTH_SERVICE_RABITTMQ) private readonly authClient: ClientProxy,
     @Inject(COMPLAINT_SERVICE_RABITTMQ)
     private readonly complaintClient: ClientProxy,
   ) {}
 
-  private handleError(error: unknown): never {
-    if (error instanceof HttpException) {
-      throw error;
-    }
+  private async sendWithLogging(
+    client: ClientProxy,
+    pattern: any,
+    payload: any,
+  ) {
+    this.logger.log('📤 Sending RMQ request');
+    this.logger.debug('Pattern: ' + JSON.stringify(pattern));
+    this.logger.debug('Payload: ' + JSON.stringify(payload));
 
-    if (this.isErrorResponse(error)) {
-      const statusCode = error.statusCode || HttpStatus.INTERNAL_SERVER_ERROR;
-      const message = error.message || 'Internal server error';
-      throw new HttpException(message, statusCode);
-    }
-
-    if (error instanceof Error) {
+    try {
+      const result = await firstValueFrom(
+        client.send(pattern, payload).pipe(timeout(5000)),
+      );
+      this.logger.log('✅ RMQ response received');
+      this.logger.debug('Response: ' + JSON.stringify(result));
+      return result;
+    } catch (error) {
+      this.logger.error('❌ RMQ request failed');
+      this.logger.error('Pattern: ' + JSON.stringify(pattern));
+      this.logger.error('Payload: ' + JSON.stringify(payload));
+      this.logger.error(
+        'Error object: ' +
+          JSON.stringify(error, Object.getOwnPropertyNames(error)),
+      );
       throw new HttpException(
-        error.message || 'Internal server error',
+        error instanceof Error ? error.message : 'Internal server error',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
-
-    throw new HttpException(
-      'Internal server error',
-      HttpStatus.INTERNAL_SERVER_ERROR,
-    );
-  }
-
-  private isErrorResponse(
-    error: unknown,
-  ): error is { statusCode: number; message: string } {
-    return (
-      typeof error === 'object' &&
-      error !== null &&
-      'statusCode' in error &&
-      'message' in error
-    );
   }
 
   // ============= AUTH ENDPOINTS =============
   @Post('register')
   async register(@Body() dto: CreateUserDto) {
-    try {
-      const result = await firstValueFrom(
-        this.authClient.send({ cmd: 'register_user' }, dto).pipe(timeout(5000)),
-      );
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    return this.sendWithLogging(this.authClient, { cmd: 'register_user' }, dto);
   }
 
   @Post('login')
   async login(@Body() dto: LoginUserDto) {
-    try {
-      const result = await firstValueFrom(
-        this.authClient.send({ cmd: 'login_user' }, dto).pipe(timeout(5000)),
-      );
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    return this.sendWithLogging(this.authClient, { cmd: 'login_user' }, dto);
   }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async getMe(@CurrentUser() user: CurrentUserData) {
-    try {
-      const result = await firstValueFrom(
-        this.authClient
-          .send({ cmd: 'get_user_by_id' }, user.id)
-          .pipe(timeout(5000)),
-      );
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    return this.sendWithLogging(
+      this.authClient,
+      { cmd: 'get_user_by_id' },
+      user.id,
+    );
   }
 
   @Get('users')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   async getAll() {
-    try {
-      const result = await firstValueFrom(
-        this.authClient.send({ cmd: 'get_users' }, {}).pipe(timeout(5000)),
-      );
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    return this.sendWithLogging(this.authClient, { cmd: 'get_users' }, {});
   }
 
   @Get('users/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   async getOne(@Param('id') id: string) {
-    try {
-      const result = await firstValueFrom(
-        this.authClient
-          .send({ cmd: 'get_user_by_id' }, parseInt(id))
-          .pipe(timeout(5000)),
-      );
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    return this.sendWithLogging(
+      this.authClient,
+      { cmd: 'get_user_by_id' },
+      parseInt(id),
+    );
   }
 
   @Patch('users/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    try {
-      const result = await firstValueFrom(
-        this.authClient
-          .send({ cmd: 'update_user' }, { id: parseInt(id), dto })
-          .pipe(timeout(5000)),
-      );
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    return this.sendWithLogging(
+      this.authClient,
+      { cmd: 'update_user' },
+      { id: parseInt(id), dto },
+    );
   }
 
   @Delete('users/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   async remove(@Param('id') id: string) {
-    try {
-      const result = await firstValueFrom(
-        this.authClient
-          .send({ cmd: 'delete_user' }, parseInt(id))
-          .pipe(timeout(5000)),
-      );
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    return this.sendWithLogging(
+      this.authClient,
+      { cmd: 'delete_user' },
+      parseInt(id),
+    );
   }
 
   // ============= COMPLAINTS ENDPOINTS =============
   @Post('complaints')
   @UseGuards(JwtAuthGuard)
   async createComplaint(@Body() dto: CreateComplaintDto) {
-    try {
-      const result = await firstValueFrom(
-        this.complaintClient
-          .send({ cmd: 'create_complaint' }, dto)
-          .pipe(timeout(5000)),
-      );
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    return this.sendWithLogging(
+      this.complaintClient,
+      { cmd: 'create_complaint' },
+      dto,
+    );
   }
 
   @Get('complaints')
   async getAllComplaints(@Query('status') status?: string) {
-    try {
-      const result = await firstValueFrom(
-        this.complaintClient
-          .send({ cmd: 'get_complaints' }, { status })
-          .pipe(timeout(5000)),
-      );
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    return this.sendWithLogging(
+      this.complaintClient,
+      { cmd: 'get_complaints' },
+      { status },
+    );
   }
 
   @Get('complaints/:id')
   async getOneComplaint(@Param('id') id: string) {
-    try {
-      const result = await firstValueFrom(
-        this.complaintClient
-          .send({ cmd: 'get_complaint_by_id' }, parseInt(id))
-          .pipe(timeout(5000)),
-      );
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    return this.sendWithLogging(
+      this.complaintClient,
+      { cmd: 'get_complaint_by_id' },
+      parseInt(id),
+    );
   }
 
   @Patch('complaints/:id')
@@ -230,61 +172,41 @@ export class ApiGatewayController {
     @Param('id') id: string,
     @Body() dto: UpdateComplaintDto,
   ) {
-    try {
-      const result = await firstValueFrom(
-        this.complaintClient
-          .send({ cmd: 'update_complaint' }, { id: parseInt(id), dto })
-          .pipe(timeout(5000)),
-      );
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    return this.sendWithLogging(
+      this.complaintClient,
+      { cmd: 'update_complaint' },
+      { id: parseInt(id), dto },
+    );
   }
 
   @Delete('complaints/:id')
   @UseGuards(JwtAuthGuard)
   async removeComplaint(@Param('id') id: string) {
-    try {
-      const result = await firstValueFrom(
-        this.complaintClient
-          .send({ cmd: 'delete_complaint' }, parseInt(id))
-          .pipe(timeout(5000)),
-      );
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    return this.sendWithLogging(
+      this.complaintClient,
+      { cmd: 'delete_complaint' },
+      parseInt(id),
+    );
   }
 
   @Post('complaints/:id/approve')
   @UseGuards(JwtAuthGuard)
   async approveComplaint(@Param('id') id: string) {
-    try {
-      const result = await firstValueFrom(
-        this.complaintClient
-          .send({ cmd: 'approve_complaint' }, parseInt(id))
-          .pipe(timeout(5000)),
-      );
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    return this.sendWithLogging(
+      this.complaintClient,
+      { cmd: 'approve_complaint' },
+      parseInt(id),
+    );
   }
 
   @Post('complaints/:id/cancel')
   @UseGuards(JwtAuthGuard)
   async cancelComplaint(@Param('id') id: string) {
-    try {
-      const result = await firstValueFrom(
-        this.complaintClient
-          .send({ cmd: 'cancel_complaint' }, parseInt(id))
-          .pipe(timeout(5000)),
-      );
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    return this.sendWithLogging(
+      this.complaintClient,
+      { cmd: 'cancel_complaint' },
+      parseInt(id),
+    );
   }
 
   @Post('complaints/:id/vote')
@@ -293,15 +215,10 @@ export class ApiGatewayController {
     @Param('id') id: string,
     @Body() body: { voteType: 'for' | 'against' },
   ) {
-    try {
-      const result = await firstValueFrom(
-        this.complaintClient
-          .send({ cmd: 'vote_complaint' }, { id: parseInt(id), ...body })
-          .pipe(timeout(5000)),
-      );
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    return this.sendWithLogging(
+      this.complaintClient,
+      { cmd: 'vote_complaint' },
+      { id: parseInt(id), ...body },
+    );
   }
 }
