@@ -14,7 +14,6 @@ import { JwtModule, JwtService } from '@nestjs/jwt';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: 'apps/gateway/.env',
     }),
     JwtModule.registerAsync({
       useFactory: (config: ConfigService) => {

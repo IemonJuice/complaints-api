@@ -9,7 +9,6 @@ import { Complaint } from './entities/complaint.entity';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: 'apps/complaint-service/.env',
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
