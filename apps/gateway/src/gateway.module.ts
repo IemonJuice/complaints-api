@@ -37,7 +37,9 @@ import { ApiGatewayController } from './controllers/gateway.controller';
         name: AUTH_SERVICE_RABITTMQ,
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => {
-          const rabbitmqUrl = configService.get<string>('RABBITMQ_URL');
+          const rabbitmqUrl =
+            configService.get<string>('RABBITMQ_URL') ||
+            'amqp://guest:guest@localhost:5672';
           const queue = configService.get<string>(
             'RABBITMQ_AUTH_QUEUE',
             'auth_queue',
@@ -66,7 +68,9 @@ import { ApiGatewayController } from './controllers/gateway.controller';
         name: COMPLAINT_SERVICE_RABITTMQ,
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => {
-          const rabbitmqUrl = configService.get<string>('RABBITMQ_URL');
+          const rabbitmqUrl =
+            configService.get<string>('RABBITMQ_URL') ||
+            'amqp://guest:guest@localhost:5672';
           const queue = configService.get<string>(
             'RABBITMQ_COMPLAINT_QUEUE',
             'complaint_queue',
