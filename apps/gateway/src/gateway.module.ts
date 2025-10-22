@@ -57,8 +57,6 @@ import { ApiGatewayController } from './controllers/gateway.controller';
               queueOptions: {
                 durable: true,
               },
-              noAck: false,
-              prefetchCount: 1,
             },
           };
         },
@@ -88,8 +86,6 @@ import { ApiGatewayController } from './controllers/gateway.controller';
               queueOptions: {
                 durable: true,
               },
-              noAck: false,
-              prefetchCount: 1,
             },
           };
         },
