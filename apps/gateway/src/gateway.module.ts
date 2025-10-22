@@ -1,15 +1,21 @@
 // apps/gateway/src/gateway.module.ts
-import { Module, OnModuleInit, OnApplicationBootstrap, Logger, Inject } from '@nestjs/common';
+import {
+  Module,
+  OnModuleInit,
+  OnApplicationBootstrap,
+  Logger,
+  Inject,
+} from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport, ClientProxy } from '@nestjs/microservices';
 import {
   AUTH_SERVICE_RABITTMQ,
   COMPLAINT_SERVICE_RABITTMQ,
 } from '../../../common/contstants';
-import { ApiGatewayController } from './controllers/auth-gateway.controller';
 import { JwtAuthGuard } from '../../auth-service/src/guards/jwt.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { JwtModule } from '@nestjs/jwt';
+import { ApiGatewayController } from './controllers/gateway.controller';
 
 @Module({
   imports: [
@@ -32,7 +38,10 @@ import { JwtModule } from '@nestjs/jwt';
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => {
           const rabbitmqUrl = configService.get<string>('RABBITMQ_URL');
-          const queue = configService.get<string>('RABBITMQ_AUTH_QUEUE', 'auth_queue');
+          const queue = configService.get<string>(
+            'RABBITMQ_AUTH_QUEUE',
+            'auth_queue',
+          );
 
           console.log('🔧 [AUTH CLIENT CONFIG]');
           console.log('  URL:', rabbitmqUrl);
@@ -58,7 +67,10 @@ import { JwtModule } from '@nestjs/jwt';
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => {
           const rabbitmqUrl = configService.get<string>('RABBITMQ_URL');
-          const queue = configService.get<string>('RABBITMQ_COMPLAINT_QUEUE', 'complaint_queue');
+          const queue = configService.get<string>(
+            'RABBITMQ_COMPLAINT_QUEUE',
+            'complaint_queue',
+          );
 
           console.log('🔧 [COMPLAINT CLIENT CONFIG]');
           console.log('  URL:', rabbitmqUrl);
@@ -113,7 +125,10 @@ export class GatewayModule implements OnModuleInit, OnApplicationBootstrap {
       await this.complaintClient.connect();
       this.logger.log('✅ COMPLAINT client connected successfully');
     } catch (error) {
-      this.logger.error('❌ COMPLAINT client connection failed:', error.message);
+      this.logger.error(
+        '❌ COMPLAINT client connection failed:',
+        error.message,
+      );
       this.logger.error('Stack:', error.stack);
     }
   }
@@ -124,7 +139,9 @@ export class GatewayModule implements OnModuleInit, OnApplicationBootstrap {
     // Тест ping для Auth Service
     try {
       this.logger.log('🏓 Testing AUTH service ping...');
-      const result = await this.authClient.send({ cmd: 'ping' }, {}).toPromise();
+      const result = await this.authClient
+        .send({ cmd: 'ping' }, {})
+        .toPromise();
       this.logger.log('✅ AUTH service ping response:', result);
     } catch (error) {
       this.logger.error('❌ AUTH service ping failed:', error.message);
@@ -133,7 +150,9 @@ export class GatewayModule implements OnModuleInit, OnApplicationBootstrap {
     // Тест ping для Complaint Service
     try {
       this.logger.log('🏓 Testing COMPLAINT service ping...');
-      const result = await this.complaintClient.send({ cmd: 'ping' }, {}).toPromise();
+      const result = await this.complaintClient
+        .send({ cmd: 'ping' }, {})
+        .toPromise();
       this.logger.log('✅ COMPLAINT service ping response:', result);
     } catch (error) {
       this.logger.error('❌ COMPLAINT service ping failed:', error.message);
